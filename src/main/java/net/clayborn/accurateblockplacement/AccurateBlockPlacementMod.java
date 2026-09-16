@@ -2,7 +2,7 @@ package net.clayborn.accurateblockplacement;
 
 import net.clayborn.accurateblockplacement.config.AccurateBlockPlacementConfig;
 
-import org.lwjgl.glfw.GLFW;
+import org.lwjgl.sdl.SDLKeycode;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -33,9 +33,9 @@ public class AccurateBlockPlacementMod implements ClientModInitializer
 
 		Category keybindCategory = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("accurateblockplacement", "category"));
 
-		KeyMapping place_keybind = KeyMappingHelper.registerKeyMapping(new KeyMapping("net.clayborn.accurateblockplacement.togglevanillaplacement", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, keybindCategory));
+		KeyMapping place_keybind = KeyMappingHelper.registerKeyMapping(new KeyMapping("net.clayborn.accurateblockplacement.togglevanillaplacement", InputConstants.Type.KEYBOARD, SDLKeycode.SDLK_UNKNOWN, keybindCategory));
 
-		KeyMapping break_keybind = KeyMappingHelper.registerKeyMapping(new KeyMapping("net.clayborn.accurateblockplacement.togglefastbreaking", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, keybindCategory));
+		KeyMapping break_keybind = KeyMappingHelper.registerKeyMapping(new KeyMapping("net.clayborn.accurateblockplacement.togglefastbreaking", InputConstants.Type.KEYBOARD, SDLKeycode.SDLK_UNKNOWN, keybindCategory));
 		
 		ClientTickEvents.END_CLIENT_TICK.register(e -> {
 			while(place_keybind.consumeClick()) {

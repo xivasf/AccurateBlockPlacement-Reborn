@@ -3,6 +3,7 @@ package net.clayborn.accurateblockplacement.mixin;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
@@ -89,13 +90,13 @@ public abstract class MinecraftMixin implements IMinecraftClientAccessor {
 	InteractionHand handOfCurrentItemInUse;
 
 	@Unique
-	private static boolean isItemAllowed(Item item) {
+	private static boolean isItemAllowed(ItemStack stack) {
+		if (stack.isEmpty()) return false;
+		Item item = stack.getItem();
+
 		return item instanceof BlockItem ||
 				(AccurateBlockPlacementConfig.toolsEnabled &&
-						(item instanceof ShovelItem ||
-								item instanceof HoeItem ||
-								item instanceof AxeItem ||
-								item instanceof FlintAndSteelItem)) ||
+						(stack.has(DataComponents.BLOCK_TRANSFORMER) || item instanceof FlintAndSteelItem)) ||
 				(AccurateBlockPlacementConfig.bucketEnabled && item instanceof BucketItem) ||
 				(AccurateBlockPlacementConfig.armorStandEnabled && item instanceof ArmorStandItem) ||
 				(AccurateBlockPlacementConfig.itemFrameEnabled && item instanceof ItemFrameItem) ||
@@ -115,7 +116,7 @@ public abstract class MinecraftMixin implements IMinecraftClientAccessor {
 				// hand is empty try the next one
 				continue;
 			}
-            if (itemInHand instanceof ItemStack && isItemAllowed(itemInHand.getItem())) {
+            if (itemInHand instanceof ItemStack && isItemAllowed(itemInHand)) {
                 // found a block
                 // or found an item that can be placed, used or interacted with a block
                 handOfCurrentItemInUse = thisHand;
@@ -187,13 +188,15 @@ public abstract class MinecraftMixin implements IMinecraftClientAccessor {
 	}
 
 	@Unique
-	private static boolean doesItemHaveOverriddenUseMethod(Item item) {
+	private static boolean doesItemHaveOverriddenUseMethod(ItemStack stack) {
+		if (stack.isEmpty()) return false;
+		Item item = stack.getItem();
 		/*
 		  Have to mark other Item types via isItemAllowed(),
 		  because they have vanilla usages that would get
 		  flagged, despite being usable in ABP:R.
 		 */
-		if(itemUseMethodName == null || isItemAllowed(item)) {
+		if(itemUseMethodName == null || isItemAllowed(stack)) {
 			return false;
 		}
 
@@ -238,6 +241,11 @@ public abstract class MinecraftMixin implements IMinecraftClientAccessor {
 
 		Item currentItem = getItemInUse(client);
 
+		// if nothing in hand, let vanilla take over
+		if (currentItem == null) return;
+
+		ItemStack currentItemStack = client.player.getItemInHand(handOfCurrentItemInUse);
+
 		// reset state if the key was actually pressed
 		// note: at very low frame rates they might have let go and hit it again before
 		// we get back here
@@ -258,24 +266,19 @@ public abstract class MinecraftMixin implements IMinecraftClientAccessor {
 			}
 		}
 
-		// if nothing in hand, let vanilla take over
-		if(currentItem == null) {
-			return;
-		}
-
 		// if player is actively using an item (i.e. a shield), let vanilla take over
 		if(client.player.isUsingItem()) {
 			return;
 		}
 
 		// if the item isn't allowed, let vanilla take over
-		if(!isItemAllowed(currentItem)) {
+		if(!isItemAllowed(currentItemStack)) {
 			return;
 		}
 
 		// if the item we are holding is activatable, let vanilla take over
 		// important to note that this will NOT catch Hoes, Shovels or Axes, as they're exempted in the method called
-		if(doesItemHaveOverriddenUseMethod(currentItem)) {
+		if(doesItemHaveOverriddenUseMethod(currentItemStack)) {
 			return;
 		}
 
@@ -287,7 +290,7 @@ public abstract class MinecraftMixin implements IMinecraftClientAccessor {
 		// check the other hand if it has something in use and if so let vanilla take over
 		InteractionHand otherHand = handOfCurrentItemInUse == InteractionHand.MAIN_HAND ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
 		ItemStack otherHandItemStack = client.player.getItemInHand(otherHand);
-		if(!otherHandItemStack.isEmpty() && (doesItemHaveOverriddenUseMethod(otherHandItemStack.getItem())) && client.player.isUsingItem()) {
+		if(!otherHandItemStack.isEmpty() && (doesItemHaveOverriddenUseMethod(otherHandItemStack)) && client.player.isUsingItem()) {
 			return;
 		}
 
@@ -312,7 +315,7 @@ public abstract class MinecraftMixin implements IMinecraftClientAccessor {
 		}
 
 		// if the target block is a composter and the held item is compostable, let vanilla take over
-		if((targetBlock instanceof ComposterBlock) && (ComposterBlock.COMPOSTABLES.containsKey(currentItem))) {
+		if (targetBlock instanceof ComposterBlock && currentItemStack.has(DataComponents.COMPOSTABLE)) {
 			return;
 		}
 
